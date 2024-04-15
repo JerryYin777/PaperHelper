@@ -1,0 +1,6 @@
+__pycache__
+.idea
+.streamlit/secrets.toml
+*.pkl
+*.faiss
+.DS_Store
