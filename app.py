@@ -1,26 +1,22 @@
 import base64
-
 import streamlit as st
 import os
 import embed_pdf
 import arxiv_downloader.utils
-
 import requests
 import re
 
 st.set_page_config(
-    page_title="PaperHelper",  # 设置浏览器标签页的标题
-    page_icon="🎓",  # 设置为一个emoji，也可以是一个图片的URL或者本地路径
-    layout="wide"  # 可选，设置布局模式
+    page_title="PaperHelper", 
+    page_icon="🎓",
+    layout="wide"
 )
 
 def extract_arxiv_links(readme_contents):
-    """提取README内容中的所有arXiv链接"""
     arxiv_links = re.findall(r'https://arxiv.org/abs/[^\s)]+', readme_contents)
     return arxiv_links
 
 def get_readme_contents(repo_url):
-    """通过GitHub API获取仓库README.md的内容"""
     user_repo = repo_url.replace("https://github.com/", "")
     api_url = f"https://api.github.com/repos/{user_repo}/contents/README.md"
     response = requests.get(api_url)
@@ -33,7 +29,6 @@ def get_readme_contents(repo_url):
         return None
 
 def download_arxiv_paper(link):
-    """下载指定的arXiv论文"""
     arxiv_id = arxiv_downloader.utils.url_to_id(link)
     try:
         arxiv_downloader.utils.download(arxiv_id, "./pdf", False)
@@ -41,8 +36,6 @@ def download_arxiv_paper(link):
     except Exception as e:
         st.sidebar.error(f"Failed to download {link}: {e}")
 
-
-# create sidebar and ask for openai api key if not set in secrets
 secrets_file_path = os.path.join(".streamlit", "secrets.toml")
 if os.path.exists(secrets_file_path):
     try:
@@ -61,7 +54,6 @@ if not os.getenv('OPENAI_API_KEY', '').startswith("sk-"):
         "OpenAI API Key", type="password"
     )
 else:
-    # 输入GitHub链接
     github_link = st.sidebar.text_input("GitHub Repository URL", key="github_link")
     if github_link:
         readme_contents = get_readme_contents(github_link)
@@ -77,7 +69,6 @@ else:
         arxiv_link = st.sidebar.text_input("arxiv link", type="default", key="unique_arxiv_link")
         if arxiv_link:
             arxiv_id = arxiv_downloader.utils.url_to_id(arxiv_link)
-        # arxiv_id = arxiv_downloader.utils.url_to_id(arxiv_link)
         try:
             arxiv_downloader.utils.download(arxiv_id, "./pdf", False)
             st.sidebar.info("Done!")
@@ -94,23 +85,16 @@ else:
             st.sidebar.error(e)
             st.sidebar.error("Failed to embed documents.")
 
-# create the app
 st.title("🔎PaperHelper: FastRAG helps you read papers efficiently and accurately")
 
 chosen_files = st.multiselect(
     "Choose files to search", embed_pdf.get_all_index_files(), default=None
 )
-#
-# print(chosen_files)
-# if chosen_files:  # Check if any files are selected
-#     for chosen_file in chosen_files:
 
-# check if openai api key is set
 if not os.getenv('OPENAI_API_KEY', '').startswith("sk-"):
     st.warning("Please enter your OpenAI API key!", icon="⚠")
     st.stop()
 
-# load the agent
 from llm_helper import convert_message, get_rag_chain, get_rag_fusion_chain,get_rag_chain_files,get_rag_fusion_chain_files
 
 rag_method_map = {
@@ -122,28 +106,21 @@ chosen_rag_method = st.radio(
     "Choose a RAG method", rag_method_map.keys(), index=0
 )
 get_rag_chain_func = rag_method_map[chosen_rag_method]
-## get the chain WITHOUT the retrieval callback (not used)
-# custom_chain = get_rag_chain_func(chosen_file)
 
-# create the message history state
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# render older messages
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# render the chat input
 prompt = st.chat_input("Enter your message...")
 if prompt:
     st.session_state.messages.append({"role": "user", "content": prompt})
 
-    # render the user's new message
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # render the assistant's response
     with st.chat_message("assistant"):
         retrival_container = st.container()
         message_placeholder = st.empty()
@@ -163,7 +140,6 @@ if prompt:
                     queried_questions.append(q)
             return qs
         
-        # get the chain with the retrieval callback
         custom_chain = get_rag_chain_func(chosen_files, retrieval_cb=retrieval_cb)
         
         if "messages" in st.session_state:
