@@ -5,7 +5,6 @@ from langchain.vectorstores import FAISS
 
 import os
 
-
 def embed_document(file_name, file_folder="pdf", embedding_folder="index"):
     file_path = f"{file_folder}/{file_name}"
     loader = PagedPDFSplitter(file_path)
@@ -27,10 +26,8 @@ def embed_document(file_name, file_folder="pdf", embedding_folder="index"):
 
 
 def embed_all_pdf_docs():
-    # Define the directory path
     pdf_directory = "pdf"
 
-    # Check if the directory exists
     if os.path.exists(pdf_directory):
         # List all PDF files in the directory
         pdf_files = [
@@ -49,12 +46,9 @@ def embed_all_pdf_docs():
 
 
 def get_all_index_files():
-    # Define the directory path
     index_directory = "index"
 
-    # Check if the directory exists
     if os.path.exists(index_directory):
-        # List all index files in the directory
         postfix = ".index.faiss"
         index_files = [
             file.replace(postfix, "")
