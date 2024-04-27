@@ -1,4 +1,3 @@
-# from langchain.callbacks import StreamlitCallbackHandler
 from langchain.callbacks.streamlit.streamlit_callback_handler import StreamlitCallbackHandler
 from tenacity import retry, wait_exponential, stop_after_attempt
 
