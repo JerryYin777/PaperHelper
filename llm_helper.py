@@ -1,9 +1,7 @@
 from typing import Optional, List
-
 from langchain.agents import AgentExecutor
 from langchain.agents.format_scratchpad.openai_tools import format_to_openai_tool_messages
 from langchain.agents.output_parsers.openai_tools import OpenAIToolsAgentOutputParser
-# langchain imports
 from langchain.chat_models import ChatOpenAI
 from langchain.schema.runnable import RunnableMap
 from langchain.prompts.prompt import PromptTemplate
@@ -28,20 +26,6 @@ def format_docs(docs):
         res += "</doc>\n"
     return res
 
-
-# def get_search_index(file_name="Mahmoudi_Nima_202202_PhD.pdf", index_folder="index"):
-#     # load embeddings
-#     from langchain.vectorstores import FAISS
-#     from langchain.embeddings.openai import OpenAIEmbeddings
-#
-#     search_index = FAISS.load_local(
-#         folder_path=index_folder,
-#         index_name=file_name + ".index",
-#         embeddings=OpenAIEmbeddings(),
-#     )
-#     return search_index
-
-
 def convert_message(m):
     if m["role"] == "user":
         return HumanMessage(content=m["content"])
@@ -51,7 +35,6 @@ def convert_message(m):
         return SystemMessage(content=m["content"])
     else:
         raise ValueError(f"Unknown role {m['role']}")
-
 
 _condense_template = """Given the following conversation and a follow up question, rephrase the follow up question to be a standalone question, in its original language.
 
@@ -67,7 +50,6 @@ _rag_template = """Answer the question based only on the following context, citi
 Question: {question}
 """
 ANSWER_PROMPT = ChatPromptTemplate.from_template(_rag_template)
-
 
 def _format_chat_history(chat_history):
     def format_single_chat_message(m):
@@ -119,10 +101,6 @@ def get_rag_chain(file_name="Mahmoudi_Nima_202202_PhD.pdf", index_folder="index"
     conversational_qa_chain = _inputs | _context | ANSWER_PROMPT | ChatOpenAI()
     return conversational_qa_chain
 
-#
-# RAG fusion chain
-# source1: https://youtu.be/GchC5WxeXGc?si=6i7J0rPZI7SNwFYZ
-# source2: https://towardsdatascience.com/forget-rag-the-future-is-rag-fusion-1147298d8ad1
 def reciprocal_rank_fusion(results: List[List], k=60):
     from langchain.load import dumps, loads
     fused_scores = {}
@@ -139,7 +117,6 @@ def reciprocal_rank_fusion(results: List[List], k=60):
         for doc, score in sorted(fused_scores.items(), key=lambda x: x[1], reverse=True)
     ]
     return reranked_results
-
 
 def get_search_query_generation_chain():
     from langchain.prompts import SystemMessagePromptTemplate, HumanMessagePromptTemplate
@@ -202,9 +179,6 @@ def get_rag_fusion_chain(file_name="Mahmoudi_Nima_202202_PhD.pdf", index_folder=
     conversational_qa_chain = _inputs | _context | ANSWER_PROMPT | ChatOpenAI()
     return conversational_qa_chain
 
-
-####################
-# Adding agent chain with OpenAI function calling
 def get_search_tool_from_indexes(search_indexes, st_cb: Optional[StreamlitCallbackHandler] = None):
     from langchain.agents import tool
     from agent_helper import retry_and_streamlit_callback
@@ -220,15 +194,14 @@ def get_search_tool_from_indexes(search_indexes, st_cb: Optional[StreamlitCallba
 
     return search
 
-
 def get_lc_oai_tools(file_names: List[str], index_folder: str = "index",
                      st_cb: Optional[StreamlitCallbackHandler] = None):
     from langchain.tools.render import format_tool_to_openai_tool
     search_indexes = get_search_index(file_names, index_folder)
     # Assuming get_search_index now returns a list of indexes for multiple files
-    lc_tool = get_search_tool_from_indexes(search_indexes, st_cb=st_cb)  # Adjusted to handle multiple indexes
+    lc_tool = get_search_tool_from_indexes(search_indexes, st_cb=st_cb)
     oai_tool = format_tool_to_openai_tool(lc_tool)
-    return [lc_tool], [oai_tool]  # Returning lists to keep the interface consistent
+    return [lc_tool], [oai_tool]
 
 
 def get_agent_chain(file_names: List[str], index_folder="index", callbacks=None,
@@ -294,13 +267,11 @@ def get_rag_chain_files(file_names: List[str], index_folder: str = "index", retr
     if retrieval_cb is None:
         retrieval_cb = lambda x: x
 
-    # Define a function to handle retrieval from multiple indexes and fuse the results
     def multi_retriever_fusion(query):
         docs = []
         for vectorstore in vectorstores:
-            # Assuming the retriever has a method like `retrieve` for fetching documents
             retriever = vectorstore.as_retriever()
-            retrieved_docs = retriever.get_relevant_documents(query)  # Use the correct method to retrieve documents
+            retrieved_docs = retriever.get_relevant_documents(query) 
             docs += retrieved_docs
         return format_docs(docs)
 
@@ -333,11 +304,11 @@ def get_rag_fusion_chain_files(file_names: List[str], index_folder: str = "index
             docs_for_query = []
             for vectorstore in vectorstores:
                 retriever = vectorstore.as_retriever()
-                retrieved_docs = retriever.get_relevant_documents(query)  # Adjust based on actual method signature
+                retrieved_docs = retriever.get_relevant_documents(query)
                 docs_for_query += [doc for doc in retrieved_docs]
             all_docs.append(docs_for_query)
         fused_docs = reciprocal_rank_fusion(all_docs)
-        return [doc for doc, _ in fused_docs]  # Adjust based on the structure expected by format_docs
+        return [doc for doc, _ in fused_docs]
 
     _context = {
         "context":
@@ -346,7 +317,7 @@ def get_rag_fusion_chain_files(file_names: List[str], index_folder: str = "index
             )
             | query_generation_chain
             | retrieval_cb
-            | (lambda queries: retrieve_and_fuse_queries(queries))  # Retrieve and fuse for all generated queries
+            | (lambda queries: retrieve_and_fuse_queries(queries))
             | format_docs,
         "question": lambda x: x["standalone_question"],
     }
@@ -357,27 +328,5 @@ def get_rag_fusion_chain_files(file_names: List[str], index_folder: str = "index
 
 if __name__ == "__main__":
 
-    # question_generation_chain = get_search_query_generation_chain()
     print('='*200)
     print('RAG Chain')
-    # filename=["mamba1.pdf","mamba2.pdf"]
-    # chain = get_rag_fusion_chain_files(file_names=filename)
-    # print(chain.invoke({'input': 'what is mamba', 'chat_history': []}))
-    #
-
-    # print('='*50)
-    # print('Question Generation Chain')
-    # print(question_generation_chain.invoke({'original_query': 'mamba'}))
-    #
-    # print('-'*50)
-    # print('RAG Fusion Chain')
-    # chain = get_rag_fusion_chain_files()
-    # print(chain.invoke({'input': 'mamba', 'chat_history': []}))
-    #
-    # agent_executor = get_agent_chain(file_names=filename)
-    # print(
-    #     agent_executor.invoke({
-    #         "input": "based on the source document, what is mamba??",
-    #         "chat_history": [],
-    #     })
-    # )
